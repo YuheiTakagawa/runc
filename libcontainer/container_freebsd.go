@@ -164,11 +164,6 @@ func (c *freebsdContainer) Start(process *Process) (err error) {
 	if err != nil {
 		return err
 	}
-	if status == Stopped {
-		if err := c.createExecFifo(); err != nil {
-			return err
-		}
-	}
 	if err := c.start(process, status == Stopped); err != nil {
 		if status == Stopped {
 			c.deleteExecFifo()
@@ -382,6 +377,9 @@ func (c *freebsdContainer) Run(process *Process) (err error) {
 	c.m.Unlock()
 	var containerReady = make(chan bool)
 	if status == Stopped {
+		if err := c.createExecFifo(); err != nil {
+			return err
+		}
 		go func() {
 			c.exec()
 			containerReady <- true
