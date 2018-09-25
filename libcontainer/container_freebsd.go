@@ -345,11 +345,7 @@ func (c *freebsdContainer) start(process *Process, isInit bool) error {
 		if err != nil {
 			return err
 		}
-		initProcess := &initProcess{
-			cmd:       cmd,
-			container: c,
-			process:   process,
-		}
+		initProcess := c.newInitProcess(process, cmd)
 		initProcess.start()
 		return c.launchJail(cmd)
 	} else {
@@ -645,4 +641,26 @@ func (c *freebsdContainer) refreshState() error {
 		return c.state.transition(&runningState{c: c})
 	}
 	return c.state.transition(&stoppedState{c: c})
+}
+
+func (c *freebsdContainer) newInitProcess(p *Process, cmd *exec.Cmd) *initProcess {
+	cmd.Env = append(cmd.Env, "_LIBCONTAINER_INITTYPE="+string(initStandard))
+	return &initProcess{
+		cmd:       cmd,
+		container: c,
+		config:    c.newInitConfig(p),
+		process:   p,
+	}
+}
+
+func (c *freebsdContainer) newInitConfig(process *Process) *initConfig {
+	cfg := &initConfig{
+		Config:  c.config,
+		Rlimits: c.config.Rlimits,
+	}
+	if len(process.Rlimits) > 0 {
+		cfg.Rlimits = process.Rlimits
+	}
+
+	return cfg
 }
