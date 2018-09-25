@@ -7,7 +7,7 @@ var (
 	eventsCommand     cli.Command
 	restoreCommand    cli.Command
 	//initCommand       cli.Command
-	pauseCommand      cli.Command
-	resumeCommand     cli.Command
-	updateCommand     cli.Command
+	pauseCommand  cli.Command
+	resumeCommand cli.Command
+	updateCommand cli.Command
 )
