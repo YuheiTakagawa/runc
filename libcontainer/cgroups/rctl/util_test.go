@@ -1,4 +1,4 @@
-// +build linux
+// +build freebsd
 
 /*
 Utility for testing cgroup operations.
