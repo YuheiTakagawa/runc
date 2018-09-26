@@ -196,20 +196,21 @@ func (m *Manager) Set(container *configs.Config) error {
 		return nil
 	}
 
-	paths := m.GetPaths()
-	for _, sys := range subsystems {
-		path := paths[sys.Name()]
-		if err := sys.Set(path, container.Cgroups); err != nil {
-			return err
+		paths := m.GetPaths()
+		for _, sys := range subsystems {
+			path := paths[sys.Name()]
+			if err := sys.Set(path, container.Cgroups); err != nil {
+				return err
+			}
 		}
-	}
 
-	if m.Paths["cpu"] != "" {
-		if err := CheckCpushares(m.Paths["cpu"], container.Cgroups.Resources.CpuShares); err != nil {
-			return err
+		if m.Paths["cpu"] != "" {
+			if err := CheckCpushares(m.Paths["cpu"], container.Cgroups.Resources.CpuShares); err != nil {
+				return err
+			}
 		}
-	}
-*/	return nil
+	*/
+	return nil
 }
 
 // Freeze toggles the container's freezer cgroup depending on the state

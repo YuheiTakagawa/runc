@@ -2,11 +2,11 @@ package libcontainer
 
 import (
 	"errors"
+	"github.com/opencontainers/runc/libcontainer/cgroups"
+	"github.com/opencontainers/runc/libcontainer/system"
 	"os"
 	"os/exec"
 	"syscall"
-	"github.com/opencontainers/runc/libcontainer/cgroups"
-	"github.com/opencontainers/runc/libcontainer/system"
 )
 
 type initProcess struct {
