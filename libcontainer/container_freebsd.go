@@ -15,6 +15,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/opencontainers/runc/libcontainer/cgroups"
 	"github.com/opencontainers/runc/libcontainer/configs"
 	"github.com/opencontainers/runc/libcontainer/utils"
 )
@@ -30,6 +31,7 @@ type freebsdContainer struct {
 	m                    sync.Mutex
 	state                containerState
 	created              time.Time
+	cgroupManager        cgroups.Manager
 }
 
 // State represents a running container's state
@@ -649,6 +651,7 @@ func (c *freebsdContainer) newInitProcess(p *Process, cmd *exec.Cmd) *initProces
 		cmd:       cmd,
 		container: c,
 		config:    c.newInitConfig(p),
+		manager:   c.cgroupManager,
 		process:   p,
 	}
 }

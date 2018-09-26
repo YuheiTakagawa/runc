@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/opencontainers/runc/libcontainer/cgroups/rctl"
 	"github.com/opencontainers/runc/libcontainer/configs"
 )
 
@@ -64,6 +65,10 @@ func (l *FreeBSDFactory) Create(id string, config *configs.Config) (Container, e
 		id:     id,
 		root:   containerRoot,
 		config: config,
+		cgroupManager: &rctl.Manager{
+			Cgroups: config.Cgroups,
+			Paths:   nil,
+		},
 	}
 
 	c.state = &stoppedState{c: c}

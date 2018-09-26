@@ -5,7 +5,7 @@ import (
 	"os"
 	"os/exec"
 	"syscall"
-
+	"github.com/opencontainers/runc/libcontainer/cgroups"
 	"github.com/opencontainers/runc/libcontainer/system"
 )
 
@@ -13,6 +13,7 @@ type initProcess struct {
 	cmd       *exec.Cmd
 	container *freebsdContainer
 	config    *initConfig
+	manager   cgroups.Manager
 	fds       []string
 	process   *Process
 }
@@ -29,6 +30,9 @@ func (p *initProcess) start() error {
 	p.process.ops = p
 	if err := setupRlimits(p.config.Rlimits); err != nil {
 		return newSystemErrorWithCause(err, "setting rlimits for ready process")
+	}
+	if err := p.manager.Set(p.config.Config); err != nil {
+		return newSystemErrorWithCause(err, "setting cgroup config for ready")
 	}
 	return nil
 }
