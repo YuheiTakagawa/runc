@@ -190,6 +190,8 @@ func (m *Manager) GetStats() (*cgroups.Stats, error) {
 func (m *Manager) Set(container *configs.Config) error {
 	// If Paths are set, then we are just joining cgroups paths
 	// and there is no need to set any values.
+	fmt.Printf("config.Config %s\n", container)
+/*
 	if m.Cgroups.Paths != nil {
 		return nil
 	}
@@ -207,7 +209,7 @@ func (m *Manager) Set(container *configs.Config) error {
 			return err
 		}
 	}
-	return nil
+*/	return nil
 }
 
 // Freeze toggles the container's freezer cgroup depending on the state
