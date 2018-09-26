@@ -1,3 +1,3 @@
 // +build !freebsd
 
-package fs
+package rctl

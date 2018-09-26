@@ -5,7 +5,7 @@ Utility for testing cgroup operations.
 
 Creates a mock of the cgroup filesystem for the duration of the test.
 */
-package fs
+package rctl
 
 import (
 	"io/ioutil"

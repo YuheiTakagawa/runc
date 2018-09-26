@@ -1,6 +1,6 @@
 // +build freebsd
 
-package fs
+package rctl
 
 import (
 	"bufio"
