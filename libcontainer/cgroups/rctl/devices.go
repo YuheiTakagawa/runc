@@ -3,6 +3,8 @@
 package rctl
 
 import (
+	"fmt"
+
 	"github.com/opencontainers/runc/libcontainer/cgroups"
 	"github.com/opencontainers/runc/libcontainer/configs"
 	"github.com/opencontainers/runc/libcontainer/system"
@@ -37,35 +39,50 @@ func (s *DevicesGroup) Set(path string, cgroup *configs.Cgroup) error {
 			if dev.Allow {
 				file = "devices.allow"
 			}
+			fmt.Printf("%s %s\n", file, dev.CgroupString())
+		/*
 			if err := writeFile(path, file, dev.CgroupString()); err != nil {
 				return err
 			}
+		*/
 		}
 		return nil
 	}
 	if cgroup.Resources.AllowAllDevices != nil {
 		if *cgroup.Resources.AllowAllDevices == false {
+			fmt.Printf("devices.deny a\n")
+			/*
 			if err := writeFile(path, "devices.deny", "a"); err != nil {
 				return err
 			}
+			*/
 
 			for _, dev := range cgroup.Resources.AllowedDevices {
+				fmt.Printf("devices.allow %s\n", dev.CgroupString())
+				/*
 				if err := writeFile(path, "devices.allow", dev.CgroupString()); err != nil {
 					return err
 				}
+				*/
 			}
 			return nil
 		}
 
+		fmt.Printf("devices.allow a\n")
+	/*
 		if err := writeFile(path, "devices.allow", "a"); err != nil {
 			return err
 		}
+	*/
 	}
 
 	for _, dev := range cgroup.Resources.DeniedDevices {
+		fmt.Printf("devices.deny %s\n", dev.CgroupString())
+	/*
 		if err := writeFile(path, "devices.deny", dev.CgroupString()); err != nil {
 			return err
 		}
+	*/
 	}
 
 	return nil

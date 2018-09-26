@@ -5,17 +5,17 @@ package rctl
 import (
 	"bufio"
 	"fmt"
-	"io/ioutil"
+	//"io/ioutil"
 	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
-	"syscall" // only for Errno
+	//"syscall" // only for Errno
 
 	"github.com/opencontainers/runc/libcontainer/cgroups"
 	"github.com/opencontainers/runc/libcontainer/configs"
 
-	"golang.org/x/sys/unix"
+	//"golang.org/x/sys/unix"
 )
 
 const (
@@ -88,6 +88,8 @@ func setKernelMemory(path string, kernelMemoryLimit int64) error {
 		// kernel memory is not enabled on the system so we should do nothing
 		return nil
 	}
+	fmt.Printf("cgroupKernelMemoryLimit %s\n", strconv.FormatInt(kernelMemoryLimit, 10))
+/*
 	if err := ioutil.WriteFile(filepath.Join(path, cgroupKernelMemoryLimit), []byte(strconv.FormatInt(kernelMemoryLimit, 10)), 0700); err != nil {
 		// Check if the error number returned by the syscall is "EBUSY"
 		// The EBUSY signal is returned on attempts to write to the
@@ -102,6 +104,7 @@ func setKernelMemory(path string, kernelMemoryLimit int64) error {
 		}
 		return fmt.Errorf("failed to write %v to %v: %v", kernelMemoryLimit, cgroupKernelMemoryLimit, err)
 	}
+*/
 	return nil
 }
 
@@ -127,30 +130,44 @@ func setMemoryAndSwap(path string, cgroup *configs.Cgroup) error {
 		// for memory and swap memory, so it won't fail because the new
 		// value and the old value don't fit kernel's validation.
 		if cgroup.Resources.MemorySwap == -1 || memoryUsage.Limit < uint64(cgroup.Resources.MemorySwap) {
+			fmt.Printf("%s %s\n", cgroupMemorySwapLimit, strconv.FormatInt(cgroup.Resources.MemorySwap, 10))
+			fmt.Printf("%s %s\n", cgroupMemoryLimit, strconv.FormatInt(cgroup.Resources.Memory, 10))
+		/*
 			if err := writeFile(path, cgroupMemorySwapLimit, strconv.FormatInt(cgroup.Resources.MemorySwap, 10)); err != nil {
 				return err
 			}
 			if err := writeFile(path, cgroupMemoryLimit, strconv.FormatInt(cgroup.Resources.Memory, 10)); err != nil {
 				return err
 			}
+		*/
 		} else {
+			fmt.Printf("%s %s\n", cgroupMemorySwapLimit, strconv.FormatInt(cgroup.Resources.MemorySwap, 10))
+			fmt.Printf("%s %s\n", cgroupMemoryLimit, strconv.FormatInt(cgroup.Resources.Memory, 10))
+		/*
 			if err := writeFile(path, cgroupMemoryLimit, strconv.FormatInt(cgroup.Resources.Memory, 10)); err != nil {
 				return err
 			}
 			if err := writeFile(path, cgroupMemorySwapLimit, strconv.FormatInt(cgroup.Resources.MemorySwap, 10)); err != nil {
 				return err
 			}
+		*/
 		}
 	} else {
 		if cgroup.Resources.Memory != 0 {
+			fmt.Printf("%s %s\n", cgroupMemoryLimit, strconv.FormatInt(cgroup.Resources.Memory, 10))
+		/*
 			if err := writeFile(path, cgroupMemoryLimit, strconv.FormatInt(cgroup.Resources.Memory, 10)); err != nil {
 				return err
 			}
+		*/
 		}
 		if cgroup.Resources.MemorySwap != 0 {
+			fmt.Printf("%s %s\n", cgroupMemorySwapLimit, strconv.FormatInt(cgroup.Resources.MemorySwap, 10))
+		/*
 			if err := writeFile(path, cgroupMemorySwapLimit, strconv.FormatInt(cgroup.Resources.MemorySwap, 10)); err != nil {
 				return err
 			}
+		*/
 		}
 	}
 
@@ -169,27 +186,39 @@ func (s *MemoryGroup) Set(path string, cgroup *configs.Cgroup) error {
 	}
 
 	if cgroup.Resources.MemoryReservation != 0 {
+		fmt.Printf("memory.soft_limit_in_bytes %s\n", strconv.FormatInt(cgroup.Resources.MemoryReservation, 10))
+	/*
 		if err := writeFile(path, "memory.soft_limit_in_bytes", strconv.FormatInt(cgroup.Resources.MemoryReservation, 10)); err != nil {
 			return err
 		}
+	*/
 	}
 
 	if cgroup.Resources.KernelMemoryTCP != 0 {
+		fmt.Printf("memory.kmem.tcp.limit_in_bytes %s\n", strconv.FormatInt(cgroup.Resources.KernelMemoryTCP, 10))
+	/*
 		if err := writeFile(path, "memory.kmem.tcp.limit_in_bytes", strconv.FormatInt(cgroup.Resources.KernelMemoryTCP, 10)); err != nil {
 			return err
 		}
+	*/
 	}
 	if cgroup.Resources.OomKillDisable {
+		fmt.Printf("memory.oom_control 1\n")
+	/*
 		if err := writeFile(path, "memory.oom_control", "1"); err != nil {
 			return err
 		}
+	*/
 	}
 	if cgroup.Resources.MemorySwappiness == nil || int64(*cgroup.Resources.MemorySwappiness) == -1 {
 		return nil
 	} else if *cgroup.Resources.MemorySwappiness <= 100 {
+		fmt.Printf("memory.swappines %s\n", strconv.FormatUint(*cgroup.Resources.MemorySwappiness, 10))
+	/*
 		if err := writeFile(path, "memory.swappiness", strconv.FormatUint(*cgroup.Resources.MemorySwappiness, 10)); err != nil {
 			return err
 		}
+	*/
 	} else {
 		return fmt.Errorf("invalid value:%d. valid memory swappiness range is 0-100", *cgroup.Resources.MemorySwappiness)
 	}

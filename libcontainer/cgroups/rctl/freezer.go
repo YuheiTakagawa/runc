@@ -4,8 +4,8 @@ package rctl
 
 import (
 	"fmt"
-	"strings"
-	"time"
+	//"strings"
+	//"time"
 
 	"github.com/opencontainers/runc/libcontainer/cgroups"
 	"github.com/opencontainers/runc/libcontainer/configs"
@@ -29,6 +29,8 @@ func (s *FreezerGroup) Apply(d *cgroupData) error {
 func (s *FreezerGroup) Set(path string, cgroup *configs.Cgroup) error {
 	switch cgroup.Resources.Freezer {
 	case configs.Frozen, configs.Thawed:
+		fmt.Printf("freezer.state %s\n", string(cgroup.Resources.Freezer))
+	/*
 		if err := writeFile(path, "freezer.state", string(cgroup.Resources.Freezer)); err != nil {
 			return err
 		}
@@ -43,6 +45,7 @@ func (s *FreezerGroup) Set(path string, cgroup *configs.Cgroup) error {
 			}
 			time.Sleep(1 * time.Millisecond)
 		}
+	*/
 	case configs.Undefined:
 		return nil
 	default:

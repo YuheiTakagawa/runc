@@ -31,43 +31,65 @@ func (s *BlkioGroup) Apply(d *cgroupData) error {
 
 func (s *BlkioGroup) Set(path string, cgroup *configs.Cgroup) error {
 	if cgroup.Resources.BlkioWeight != 0 {
+		fmt.Printf("blkio.weight %d\n", cgroup.Resources.BlkioWeight)
+	/*
 		if err := writeFile(path, "blkio.weight", strconv.FormatUint(uint64(cgroup.Resources.BlkioWeight), 10)); err != nil {
 			return err
 		}
+	*/
 	}
 
 	if cgroup.Resources.BlkioLeafWeight != 0 {
+		fmt.Printf("blkio.leaf_weight %d\n", cgroup.Resources.BlkioLeafWeight)
+	/*
 		if err := writeFile(path, "blkio.leaf_weight", strconv.FormatUint(uint64(cgroup.Resources.BlkioLeafWeight), 10)); err != nil {
 			return err
 		}
+	*/
 	}
 	for _, wd := range cgroup.Resources.BlkioWeightDevice {
+		fmt.Printf("blkio.weight_device %s\n", wd.WeightString())
+		fmt.Printf("blkio.leaf_weight_device %s\n", wd.LeafWeightString())
+	/*
 		if err := writeFile(path, "blkio.weight_device", wd.WeightString()); err != nil {
 			return err
 		}
 		if err := writeFile(path, "blkio.leaf_weight_device", wd.LeafWeightString()); err != nil {
 			return err
 		}
+	*/
 	}
 	for _, td := range cgroup.Resources.BlkioThrottleReadBpsDevice {
+		fmt.Printf("blkio.throttle.read_bps_device %s\n", td.String())
+	/*
 		if err := writeFile(path, "blkio.throttle.read_bps_device", td.String()); err != nil {
 			return err
 		}
+	*/
 	}
 	for _, td := range cgroup.Resources.BlkioThrottleWriteBpsDevice {
+		fmt.Printf("blkio.throttle.write_bps_device %s\n", td.String())
+	/*
 		if err := writeFile(path, "blkio.throttle.write_bps_device", td.String()); err != nil {
 			return err
 		}
+	*/
 	}
 	for _, td := range cgroup.Resources.BlkioThrottleReadIOPSDevice {
+		fmt.Printf("blkio.throttle.read_iops_device %s\n", td.String())
+	/*
 		if err := writeFile(path, "blkio.throttle.read_iops_device", td.String()); err != nil {
 			return err
 		}
+	*/
 	}
 	for _, td := range cgroup.Resources.BlkioThrottleWriteIOPSDevice {
+		fmt.Printf("blkio.throttle.write_ios_device %s\n", td.String())
+	/*
 		if err := writeFile(path, "blkio.throttle.write_iops_device", td.String()); err != nil {
 			return err
 		}
+	*/
 	}
 
 	return nil

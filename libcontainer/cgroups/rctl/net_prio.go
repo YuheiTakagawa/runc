@@ -3,6 +3,7 @@
 package rctl
 
 import (
+	"fmt"
 	"github.com/opencontainers/runc/libcontainer/cgroups"
 	"github.com/opencontainers/runc/libcontainer/configs"
 )
@@ -24,9 +25,12 @@ func (s *NetPrioGroup) Apply(d *cgroupData) error {
 
 func (s *NetPrioGroup) Set(path string, cgroup *configs.Cgroup) error {
 	for _, prioMap := range cgroup.Resources.NetPrioIfpriomap {
+		fmt.Printf("net_prio.ifpriomap %s\n", prioMap.CgroupString())
+	/*
 		if err := writeFile(path, "net_prio.ifpriomap", prioMap.CgroupString()); err != nil {
 			return err
 		}
+	*/
 	}
 
 	return nil

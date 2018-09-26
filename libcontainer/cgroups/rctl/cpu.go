@@ -4,6 +4,7 @@ package rctl
 
 import (
 	"bufio"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -55,33 +56,48 @@ func (s *CpuGroup) ApplyDir(path string, cgroup *configs.Cgroup, pid int) error 
 
 func (s *CpuGroup) SetRtSched(path string, cgroup *configs.Cgroup) error {
 	if cgroup.Resources.CpuRtPeriod != 0 {
+		fmt.Printf("cpu.rt_period_us %s\n", strconv.FormatUint(cgroup.Resources.CpuRtPeriod, 10))
+	/*
 		if err := writeFile(path, "cpu.rt_period_us", strconv.FormatUint(cgroup.Resources.CpuRtPeriod, 10)); err != nil {
 			return err
 		}
+	*/
 	}
 	if cgroup.Resources.CpuRtRuntime != 0 {
+		fmt.Printf("cpu.rt_runtime_us %s\n", strconv.FormatInt(cgroup.Resources.CpuRtRuntime, 10))
+	/*
 		if err := writeFile(path, "cpu.rt_runtime_us", strconv.FormatInt(cgroup.Resources.CpuRtRuntime, 10)); err != nil {
 			return err
 		}
+	*/
 	}
 	return nil
 }
 
 func (s *CpuGroup) Set(path string, cgroup *configs.Cgroup) error {
 	if cgroup.Resources.CpuShares != 0 {
+		fmt.Printf("cpu.shares %s\n", strconv.FormatUint(cgroup.Resources.CpuShares, 10))
+	/*
 		if err := writeFile(path, "cpu.shares", strconv.FormatUint(cgroup.Resources.CpuShares, 10)); err != nil {
 			return err
 		}
+	*/
 	}
 	if cgroup.Resources.CpuPeriod != 0 {
+		fmt.Printf("cpu.cfs_period_us %s\n", strconv.FormatUint(cgroup.Resources.CpuPeriod, 10))
+	/*
 		if err := writeFile(path, "cpu.cfs_period_us", strconv.FormatUint(cgroup.Resources.CpuPeriod, 10)); err != nil {
 			return err
 		}
+	*/
 	}
 	if cgroup.Resources.CpuQuota != 0 {
+		fmt.Printf("cpu.cfs_quota_us %s\n", strconv.FormatInt(cgroup.Resources.CpuQuota, 10))
+	/*
 		if err := writeFile(path, "cpu.cfs_quota_us", strconv.FormatInt(cgroup.Resources.CpuQuota, 10)); err != nil {
 			return err
 		}
+	*/
 	}
 	if err := s.SetRtSched(path, cgroup); err != nil {
 		return err
