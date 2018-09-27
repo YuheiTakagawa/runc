@@ -11,6 +11,7 @@ import (
 	"path/filepath"
 	"sync"
 
+	"github.com/opencontainers/runc/libcontainer/system"
 	"github.com/opencontainers/runc/libcontainer/cgroups"
 	"github.com/opencontainers/runc/libcontainer/configs"
 	libcontainerUtils "github.com/opencontainers/runc/libcontainer/utils"
@@ -65,6 +66,7 @@ type Manager struct {
 	mu      sync.Mutex
 	Cgroups *configs.Cgroup
 	Paths   map[string]string
+	Name    string
 }
 
 // The absolute path to the root of the cgroup hierarchies.
@@ -190,7 +192,6 @@ func (m *Manager) GetStats() (*cgroups.Stats, error) {
 func (m *Manager) Set(container *configs.Config) error {
 	// If Paths are set, then we are just joining cgroups paths
 	// and there is no need to set any values.
-	fmt.Printf("config.Config %s\n", container.Cgroups)
 	fmt.Printf("config.Config %s\n", container.Cgroups.Resources)
 	/*
 		if m.Cgroups.Paths != nil {
@@ -201,7 +202,7 @@ func (m *Manager) Set(container *configs.Config) error {
 		for _, sys := range subsystems {
 	//	path := paths[sys.Name()]
 	//		if err := sys.Set(path, container.Cgroups); err != nil {
-			if err := sys.Set("", container.Cgroups); err != nil {
+			if err := sys.Set(m.Name, container.Cgroups); err != nil {
 				return err
 			}
 		}
@@ -307,6 +308,13 @@ func (raw *cgroupData) join(subsystem string) (string, error) {
 		return "", err
 	}
 	return path, nil
+}
+
+func rctlAdd(jid, resource, action, amount string) error {
+	if err := system.RctlAdd(jid, resource, action, amount); err != nil {
+		return fmt.Errorf("failed to add rctl")
+	}
+	return nil
 }
 
 func writeFile(dir, file, data string) error {

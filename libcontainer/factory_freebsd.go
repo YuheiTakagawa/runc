@@ -68,6 +68,7 @@ func (l *FreeBSDFactory) Create(id string, config *configs.Config) (Container, e
 		cgroupManager: &rctl.Manager{
 			Cgroups: config.Cgroups,
 			Paths:   nil,
+			Name: id,
 		},
 	}
 
