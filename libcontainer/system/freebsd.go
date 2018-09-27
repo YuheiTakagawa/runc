@@ -30,3 +30,9 @@ func RctlAdd(jid string, resource string, action string, amount string) error {
 
 	return err
 }
+
+func RctlRemove(jname string) error {
+	str := "jail:" + jname
+	err := exec.Command("rctl", "-r", str).Run()
+	return err
+}

@@ -154,6 +154,7 @@ func (m *Manager) Apply(pid int) (err error) {
 }
 
 func (m *Manager) Destroy() error {
+	/*
 	if m.Cgroups.Paths != nil {
 		return nil
 	}
@@ -163,6 +164,16 @@ func (m *Manager) Destroy() error {
 		return err
 	}
 	m.Paths = make(map[string]string)
+	*/
+	if m.Name == "" {
+		return nil
+	}
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if err := system.RctlRemove(m.Name); err != nil {
+		return err
+	}
+	m.Name = ""
 	return nil
 }
 
