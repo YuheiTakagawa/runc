@@ -85,6 +85,12 @@ func (s *CpuGroup) Set(path string, cgroup *configs.Cgroup) error {
 	}
 	if cgroup.Resources.CpuPeriod != 0 {
 		fmt.Printf("cpu.cfs_period_us %s\n", strconv.FormatUint(cgroup.Resources.CpuPeriod, 10))
+		limit := cgroup.Resources.CpuPeriod/1000000
+		if limit != 0 {
+			if err := rctlAdd(path, "cputime", "sigxcpu", strconv.FormatUint(cgroup.Resources.CpuPeriod, 10)); err != nil {
+				return err
+			}
+		}
 	/*
 		if err := writeFile(path, "cpu.cfs_period_us", strconv.FormatUint(cgroup.Resources.CpuPeriod, 10)); err != nil {
 			return err
@@ -93,6 +99,12 @@ func (s *CpuGroup) Set(path string, cgroup *configs.Cgroup) error {
 	}
 	if cgroup.Resources.CpuQuota != 0 {
 		fmt.Printf("cpu.cfs_quota_us %s\n", strconv.FormatInt(cgroup.Resources.CpuQuota, 10))
+		limit := (cgroup.Resources.CpuQuota*100)/int64(cgroup.Resources.CpuPeriod)
+		if limit != 0 {
+			if err := rctlAdd(path, "pcpu", "deny", strconv.FormatInt(limit, 10)); err != nil {
+				return err
+			}
+		}
 	/*
 		if err := writeFile(path, "cpu.cfs_quota_us", strconv.FormatInt(cgroup.Resources.CpuQuota, 10)); err != nil {
 			return err
