@@ -130,8 +130,12 @@ func setMemoryAndSwap(path string, cgroup *configs.Cgroup) error {
 		// for memory and swap memory, so it won't fail because the new
 		// value and the old value don't fit kernel's validation.
 		if cgroup.Resources.MemorySwap == -1 || memoryUsage.Limit < uint64(cgroup.Resources.MemorySwap) {
-			fmt.Printf("%s %s\n", cgroupMemorySwapLimit, strconv.FormatInt(cgroup.Resources.MemorySwap, 10))
-			fmt.Printf("%s %s\n", cgroupMemoryLimit, strconv.FormatInt(cgroup.Resources.Memory, 10))
+			if err := rctlAdd(path, "vmemoryuse", "deny", strconv.FormatInt(cgroup.Resources.MemorySwap, 10)); err != nil {
+				return err
+			}
+			if err := rctlAdd(path, "memoryuse", "deny", strconv.FormatInt(cgroup.Resources.Memory, 10)); err != nil {
+				return err
+			}
 		/*
 			if err := writeFile(path, cgroupMemorySwapLimit, strconv.FormatInt(cgroup.Resources.MemorySwap, 10)); err != nil {
 				return err
@@ -141,8 +145,12 @@ func setMemoryAndSwap(path string, cgroup *configs.Cgroup) error {
 			}
 		*/
 		} else {
-			fmt.Printf("%s %s\n", cgroupMemorySwapLimit, strconv.FormatInt(cgroup.Resources.MemorySwap, 10))
-			fmt.Printf("%s %s\n", cgroupMemoryLimit, strconv.FormatInt(cgroup.Resources.Memory, 10))
+			if err := rctlAdd(path, "vmemoryuse", "deny", strconv.FormatInt(cgroup.Resources.MemorySwap, 10)); err != nil {
+				return err
+			}
+			if err := rctlAdd(path, "memoryuse", "deny", strconv.FormatInt(cgroup.Resources.Memory, 10)); err != nil {
+				return err
+			}
 		/*
 			if err := writeFile(path, cgroupMemoryLimit, strconv.FormatInt(cgroup.Resources.Memory, 10)); err != nil {
 				return err
@@ -154,7 +162,9 @@ func setMemoryAndSwap(path string, cgroup *configs.Cgroup) error {
 		}
 	} else {
 		if cgroup.Resources.Memory != 0 {
-			fmt.Printf("%s %s\n", cgroupMemoryLimit, strconv.FormatInt(cgroup.Resources.Memory, 10))
+			if err := rctlAdd(path, "memoryuse", "deny", strconv.FormatInt(cgroup.Resources.Memory, 10)); err != nil {
+				return err
+			}
 		/*
 			if err := writeFile(path, cgroupMemoryLimit, strconv.FormatInt(cgroup.Resources.Memory, 10)); err != nil {
 				return err
@@ -162,7 +172,9 @@ func setMemoryAndSwap(path string, cgroup *configs.Cgroup) error {
 		*/
 		}
 		if cgroup.Resources.MemorySwap != 0 {
-			fmt.Printf("%s %s\n", cgroupMemorySwapLimit, strconv.FormatInt(cgroup.Resources.MemorySwap, 10))
+			if err := rctlAdd(path, "vmemoryuse", "deny", strconv.FormatInt(cgroup.Resources.MemorySwap, 10)); err != nil {
+				return err
+			}
 		/*
 			if err := writeFile(path, cgroupMemorySwapLimit, strconv.FormatInt(cgroup.Resources.MemorySwap, 10)); err != nil {
 				return err

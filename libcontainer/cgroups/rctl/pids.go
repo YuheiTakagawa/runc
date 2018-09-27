@@ -35,7 +35,9 @@ func (s *PidsGroup) Set(path string, cgroup *configs.Cgroup) error {
 			limit = strconv.FormatInt(cgroup.Resources.PidsLimit, 10)
 		}
 
-		fmt.Printf("pids.max %s\n", limit)
+		if err := rctlAdd(path, "maxproc", "deny", limit); err != nil {
+			return err
+		}
 	/*
 		if err := writeFile(path, "pids.max", limit); err != nil {
 			return err
