@@ -26,6 +26,17 @@ func (p *initProcess) externalDescriptors() []string {
 	return p.fds
 }
 
+/* vvstart() is same setnsProcess.start() of Linux */
+func (p *initProcess) vvstart() error {
+	p.process.ops = p
+	if p.config.Rlimits != nil {
+		if err := setupRlimits(p.config.Rlimits); err != nil {
+			return newSystemErrorWithCause(err, "setting rlimits for ready process")
+		}
+	}
+	return nil
+}
+
 func (p *initProcess) start() error {
 	p.process.ops = p
 	if err := setupRlimits(p.config.Rlimits); err != nil {

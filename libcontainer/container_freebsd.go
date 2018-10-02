@@ -359,8 +359,9 @@ func (c *freebsdContainer) start(process *Process, isInit bool) error {
 			cmd:       cmd,
 			container: c,
 			process:   process,
+			config: c.newInitConfig(process),
 		}
-		initProcess.start()
+		initProcess.vvstart()
 		return cmd.Start()
 	}
 }
