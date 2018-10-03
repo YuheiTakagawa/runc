@@ -226,6 +226,17 @@ func (m *Manager) Set(container *configs.Config) error {
 	return nil
 }
 
+
+// After running container setting value
+func (m *Manager) Afterset(name string, container *configs.Config) error {
+	if container.Cgroups.Resources.CpusetCpus != "" {
+		if err := system.Cpuset(name, container.Cgroups.Resources.CpusetCpus); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 // Freeze toggles the container's freezer cgroup depending on the state
 // provided
 func (m *Manager) Freeze(state configs.FreezerState) error {

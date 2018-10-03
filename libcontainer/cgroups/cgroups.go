@@ -39,6 +39,9 @@ type Manager interface {
 
 	// Sets the cgroup as configured.
 	Set(container *configs.Config) error
+
+	// Sets the cgroup as configured after running container.
+	Afterset(name string, container *configs.Config) error
 }
 
 type NotFoundError struct {

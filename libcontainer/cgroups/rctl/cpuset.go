@@ -31,7 +31,10 @@ func (s *CpusetGroup) Apply(d *cgroupData) error {
 
 func (s *CpusetGroup) Set(path string, cgroup *configs.Cgroup) error {
 	if cgroup.Resources.CpusetCpus != "" {
-		fmt.Printf("cpuset.cpus %d\n", cgroup.Resources.CpusetCpus)
+		fmt.Printf("cpuset.cpus %s\n", cgroup.Resources.CpusetCpus)
+	/*
+	 * cpuset(1) or cpuset(2) target active jail. Before running jail, we can't set cpuset
+	*/
 	/*
 		if err := writeFile(path, "cpuset.cpus", cgroup.Resources.CpusetCpus); err != nil {
 			return err

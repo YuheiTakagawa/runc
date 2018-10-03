@@ -36,3 +36,9 @@ func RctlRemove(jname string) error {
 	err := exec.Command("rctl", "-r", str).Run()
 	return err
 }
+
+
+func Cpuset(jname, cpuset string) error {
+	err := exec.Command("cpuset", "-l", cpuset, "-j", jname).Run()
+	return err
+}

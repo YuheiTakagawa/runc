@@ -509,6 +509,8 @@ func (c *freebsdContainer) exec() error {
 	if len(data) > 0 {
 		c.markRunning()
 		os.Remove(path)
+		/* For FreeBSD cpuset(1) and (2) target active jail. This timing is best.*/
+		c.cgroupManager.Afterset(c.jailId, c.config)
 		return nil
 	}
 	return fmt.Errorf("cannot start an already running container")
