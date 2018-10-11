@@ -79,8 +79,8 @@ mkdir rootfs
 fetch ftp://ftp.freebsd.org/pub/FreeBSD/releases/amd64/amd64/11.0-RELEASE/base.txz
 fetch ftp://ftp.freebsd.org/pub/FreeBSD/releases/amd64/amd64/11.0-RELEASE/lib32.txz
 
-tar xvf -C base.txz rootfs
-tar xvf -C lib32.txz rootfs
+tar xvf base.txz -C rootfs
+tar xvf lib32.txz -C rootfs
 
 ```
 After a root filesystem is populated you just generate a spec in the format of a `config.json` file inside your bundle.
