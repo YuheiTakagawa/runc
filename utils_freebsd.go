@@ -44,6 +44,18 @@ func getContainer(context *cli.Context) (libcontainer.Container, error) {
 	return factory.Load(id)
 }
 
+func fatalf(t string, v ...interface{}) {
+	fatal(fmt.Errorf(t, v...))
+}
+
+func getDefaultImagePath(context *cli.Context) string {
+	cwd, err := os.Getwd()
+	if err != nil {
+		panic(err)
+	}
+	return filepath.Join(cwd, "checkpoint")
+}
+
 func validateProcessSpec(spec *specs.Process) error {
 	// TODO
 	return nil

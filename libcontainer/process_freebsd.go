@@ -90,3 +90,8 @@ func (p *initProcess) signal(sig os.Signal) error {
 func (p *initProcess) setExternalDescriptors(newFds []string) {
 	p.fds = newFds
 }
+
+func getPipeFds(pid int) ([]string, error) {
+	fds := make([]string, 3)
+	return fds, nil
+}

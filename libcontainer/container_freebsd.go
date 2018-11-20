@@ -2,12 +2,15 @@ package libcontainer
 
 import (
 	"bytes"
+	"encoding/json"
 	"context"
 	"fmt"
 	"io/ioutil"
+	"net"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"reflect"
 	"sort"
 	"strconv"
 	"strings"
@@ -15,9 +18,14 @@ import (
 	"syscall"
 	"time"
 
+	"golang.org/x/sys/unix"
+
+	"github.com/Sirupsen/logrus"
+	"github.com/golang/protobuf/proto"
 	"github.com/opencontainers/runc/libcontainer/cgroups"
 	"github.com/opencontainers/runc/libcontainer/configs"
 	"github.com/opencontainers/runc/libcontainer/utils"
+	"github.com/opencontainers/runc/libcontainer/criurpc"
 )
 
 type freebsdContainer struct {
@@ -27,8 +35,10 @@ type freebsdContainer struct {
 	jailId               string
 	initProcessPid       int
 	initProcessStartTime uint64
+	criuPath             string
 	devPartition         string
 	m                    sync.Mutex
+	criuVersion          int
 	state                containerState
 	created              time.Time
 	cgroupManager        cgroups.Manager
@@ -53,6 +63,8 @@ type State struct {
 type Container interface {
 	BaseContainer
 
+	Checkpoint(criuOpts *CriuOpts) error
+	Restore(process *Process, criuOpts *CriuOpts) error
 	// Methods below here are platform specific
 
 	// Execute a quick cmd in jail.
@@ -673,7 +685,7 @@ func (c *freebsdContainer) newInitConfig(process *Process) *initConfig {
 
 var criuFeatures *criurpc.CriuFeatures
 
-func (c *linuxContainer) checkCriuFeatures(criuOpts *CriuOpts, rpcOpts *criurpc.CriuOpts, criuFeat *criurpc.CriuFeatures) error {
+func (c *freebsdContainer) checkCriuFeatures(criuOpts *CriuOpts, rpcOpts *criurpc.CriuOpts, criuFeat *criurpc.CriuFeatures) error {
 
 	var t criurpc.CriuReqType
 	t = criurpc.CriuReqType_FEATURE_CHECK
@@ -722,7 +734,7 @@ func (c *linuxContainer) checkCriuFeatures(criuOpts *CriuOpts, rpcOpts *criurpc.
 }
 
 // checkCriuVersion checks Criu version greater than or equal to minVersion
-func (c *linuxContainer) checkCriuVersion(minVersion string) error {
+func (c *freebsdContainer) checkCriuVersion(minVersion string) error {
 	var x, y, z, versionReq int
 
 	_, err := fmt.Sscanf(minVersion, "%d.%d.%d\n", &x, &y, &z) // 1.5.2
@@ -780,7 +792,7 @@ func (c *linuxContainer) checkCriuVersion(minVersion string) error {
 
 const descriptorsFilename = "descriptors.json"
 
-func (c *linuxContainer) addCriuDumpMount(req *criurpc.CriuReq, m *configs.Mount) {
+func (c *freebsdContainer) addCriuDumpMount(req *criurpc.CriuReq, m *configs.Mount) {
 	mountDest := m.Destination
 	if strings.HasPrefix(mountDest, c.config.Rootfs) {
 		mountDest = mountDest[len(c.config.Rootfs):]
@@ -793,9 +805,9 @@ func (c *linuxContainer) addCriuDumpMount(req *criurpc.CriuReq, m *configs.Mount
 	req.Opts.ExtMnt = append(req.Opts.ExtMnt, extMnt)
 }
 
-func (c *linuxContainer) addMaskPaths(req *criurpc.CriuReq) error {
+func (c *freebsdContainer) addMaskPaths(req *criurpc.CriuReq) error {
 	for _, path := range c.config.MaskPaths {
-		fi, err := os.Stat(fmt.Sprintf("/proc/%d/root/%s", c.initProcess.pid(), path))
+		fi, err := os.Stat(fmt.Sprintf("/proc/%d/root/%s", c.initProcessPid, path))
 		if err != nil {
 			if os.IsNotExist(err) {
 				continue
@@ -816,7 +828,7 @@ func (c *linuxContainer) addMaskPaths(req *criurpc.CriuReq) error {
 	return nil
 }
 
-func (c *linuxContainer) Checkpoint(criuOpts *CriuOpts) error {
+func (c *freebsdContainer) Checkpoint(criuOpts *CriuOpts) error {
 	c.m.Lock()
 	defer c.m.Unlock()
 
@@ -869,7 +881,7 @@ func (c *linuxContainer) Checkpoint(criuOpts *CriuOpts) error {
 		Root:            proto.String(c.config.Rootfs),
 		ManageCgroups:   proto.Bool(true),
 		NotifyScripts:   proto.Bool(true),
-		Pid:             proto.Int32(int32(c.initProcess.pid())),
+		Pid:             proto.Int32(int32(c.initProcessPid)),
 		ShellJob:        proto.Bool(criuOpts.ShellJob),
 		LeaveRunning:    proto.Bool(criuOpts.LeaveRunning),
 		TcpEstablished:  proto.Bool(criuOpts.TcpEstablished),
@@ -926,6 +938,7 @@ func (c *linuxContainer) Checkpoint(criuOpts *CriuOpts) error {
 		Opts: &rpcOpts,
 	}
 
+	/*
 	//no need to dump these information in pre-dump
 	if !criuOpts.PreDump {
 		for _, m := range c.config.Mounts {
@@ -965,6 +978,7 @@ func (c *linuxContainer) Checkpoint(criuOpts *CriuOpts) error {
 			return err
 		}
 	}
+	*/
 
 	err = c.criuSwrk(nil, req, criuOpts, false)
 	if err != nil {
@@ -973,7 +987,7 @@ func (c *linuxContainer) Checkpoint(criuOpts *CriuOpts) error {
 	return nil
 }
 
-func (c *linuxContainer) addCriuRestoreMount(req *criurpc.CriuReq, m *configs.Mount) {
+func (c *freebsdContainer) addCriuRestoreMount(req *criurpc.CriuReq, m *configs.Mount) {
 	mountDest := m.Destination
 	if strings.HasPrefix(mountDest, c.config.Rootfs) {
 		mountDest = mountDest[len(c.config.Rootfs):]
@@ -986,7 +1000,7 @@ func (c *linuxContainer) addCriuRestoreMount(req *criurpc.CriuReq, m *configs.Mo
 	req.Opts.ExtMnt = append(req.Opts.ExtMnt, extMnt)
 }
 
-func (c *linuxContainer) restoreNetwork(req *criurpc.CriuReq, criuOpts *CriuOpts) {
+func (c *freebsdContainer) restoreNetwork(req *criurpc.CriuReq, criuOpts *CriuOpts) {
 	for _, iface := range c.config.Networks {
 		switch iface.Type {
 		case "veth":
@@ -1007,7 +1021,7 @@ func (c *linuxContainer) restoreNetwork(req *criurpc.CriuReq, criuOpts *CriuOpts
 	}
 }
 
-func (c *linuxContainer) Restore(process *Process, criuOpts *CriuOpts) error {
+func (c *freebsdContainer) Restore(process *Process, criuOpts *CriuOpts) error {
 	c.m.Lock()
 	defer c.m.Unlock()
 
@@ -1055,11 +1069,13 @@ func (c *linuxContainer) Restore(process *Process, criuOpts *CriuOpts) error {
 	if err != nil {
 		return err
 	}
+/*
 	err = unix.Mount(c.config.Rootfs, root, "", unix.MS_BIND|unix.MS_REC, "")
 	if err != nil {
 		return err
 	}
 	defer unix.Unmount(root, unix.MNT_DETACH)
+*/
 	t := criurpc.CriuReqType_RESTORE
 	req := &criurpc.CriuReq{
 		Type: &t,
@@ -1087,7 +1103,7 @@ func (c *linuxContainer) Restore(process *Process, criuOpts *CriuOpts) error {
 		case "bind":
 			c.addCriuRestoreMount(req, m)
 			break
-		case "cgroup":
+/*		case "cgroup":
 			binds, err := getCgroupMounts(m)
 			if err != nil {
 				return err
@@ -1096,6 +1112,7 @@ func (c *linuxContainer) Restore(process *Process, criuOpts *CriuOpts) error {
 				c.addCriuRestoreMount(req, b)
 			}
 			break
+*/
 		}
 	}
 
@@ -1109,9 +1126,11 @@ func (c *linuxContainer) Restore(process *Process, criuOpts *CriuOpts) error {
 		c.addCriuRestoreMount(req, m)
 	}
 
+/*
 	if criuOpts.EmptyNs&unix.CLONE_NEWNET == 0 {
 		c.restoreNetwork(req, criuOpts)
 	}
+*/
 
 	// append optional manage cgroups mode
 	if criuOpts.ManageCgroupsMode != 0 {
@@ -1144,7 +1163,7 @@ func (c *linuxContainer) Restore(process *Process, criuOpts *CriuOpts) error {
 	return c.criuSwrk(process, req, criuOpts, true)
 }
 
-func (c *linuxContainer) criuApplyCgroups(pid int, req *criurpc.CriuReq) error {
+func (c *freebsdContainer) criuApplyCgroups(pid int, req *criurpc.CriuReq) error {
 	// XXX: Do we need to deal with this case? AFAIK criu still requires root.
 	if err := c.cgroupManager.Apply(pid); err != nil {
 		return err
@@ -1171,7 +1190,7 @@ func (c *linuxContainer) criuApplyCgroups(pid int, req *criurpc.CriuReq) error {
 	return nil
 }
 
-func (c *linuxContainer) criuSwrk(process *Process, req *criurpc.CriuReq, opts *CriuOpts, applyCgroups bool) error {
+func (c *freebsdContainer) criuSwrk(process *Process, req *criurpc.CriuReq, opts *CriuOpts, applyCgroups bool) error {
 	fds, err := unix.Socketpair(unix.AF_LOCAL, unix.SOCK_SEQPACKET|unix.SOCK_CLOEXEC, 0)
 	if err != nil {
 		return err
@@ -1363,7 +1382,7 @@ func unlockNetwork(config *configs.Config) error {
 	return nil
 }
 
-func (c *linuxContainer) criuNotifications(resp *criurpc.CriuResp, process *Process, opts *CriuOpts, fds []string, oob []byte) error {
+func (c *freebsdContainer) criuNotifications(resp *criurpc.CriuResp, process *Process, opts *CriuOpts, fds []string, oob []byte) error {
 	notify := resp.GetNotify()
 	if notify == nil {
 		return fmt.Errorf("invalid response: %s", resp.String())
@@ -1413,7 +1432,8 @@ func (c *linuxContainer) criuNotifications(resp *criurpc.CriuResp, process *Proc
 		}
 		// create a timestamp indicating when the restored checkpoint was started
 		c.created = time.Now().UTC()
-		if _, err := c.updateState(r); err != nil {
+		//if _, err := c.updateState(r); err != nil {
+		if _, err := c.updateState(); err != nil {
 			return err
 		}
 		if err := os.Remove(filepath.Join(c.root, "checkpoint")); err != nil {
