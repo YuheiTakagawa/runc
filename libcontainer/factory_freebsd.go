@@ -20,6 +20,14 @@ const (
 type FreeBSDFactory struct {
 	// Root directory for the factory to store state.
 	Root string
+	CriuPath string
+}
+
+func CriuPath(criupath string) func(*FreeBSDFactory) error {
+	return func(l *FreeBSDFactory) error {
+		l.CriuPath = criupath
+		return nil
+	}
 }
 
 func New(root string, options ...func(*FreeBSDFactory) error) (Factory, error) {
@@ -31,6 +39,7 @@ func New(root string, options ...func(*FreeBSDFactory) error) (Factory, error) {
 
 	l := &FreeBSDFactory{
 		Root: root,
+		CriuPath: "criu",
 	}
 
 	return l, nil
@@ -65,6 +74,7 @@ func (l *FreeBSDFactory) Create(id string, config *configs.Config) (Container, e
 		id:     id,
 		root:   containerRoot,
 		config: config,
+		criuPath:	l.CriuPath,
 		cgroupManager: &rctl.Manager{
 			Cgroups: config.Cgroups,
 			Paths:   nil,
@@ -92,6 +102,7 @@ func (l *FreeBSDFactory) Load(id string) (Container, error) {
 		jailId:               state.JailId,
 		devPartition:         state.DevPart,
 		config:               &state.Config,
+		criuPath:             l.CriuPath,
 		root:                 containerRoot,
 		created:              state.Created,
 	}
