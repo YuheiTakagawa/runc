@@ -118,16 +118,18 @@ var namespaceMapping = map[specs.LinuxNamespaceType]int{
 }
 
 func setEmptyNsMask(context *cli.Context, options *libcontainer.CriuOpts) error {
-	var nsmask int
+	/*
+		var nsmask int
 
-	for _, ns := range context.StringSlice("empty-ns") {
-		f, exists := namespaceMapping[specs.LinuxNamespaceType(ns)]
-		if !exists {
-			return fmt.Errorf("namespace %q is not supported", ns)
+		for _, ns := range context.StringSlice("empty-ns") {
+			f, exists := namespaceMapping[specs.LinuxNamespaceType(ns)]
+			if !exists {
+				return fmt.Errorf("namespace %q is not supported", ns)
+			}
+			nsmask |= f
 		}
-		nsmask |= f
-	}
 
-	options.EmptyNs = uint32(nsmask)
+		options.EmptyNs = uint32(nsmask)
+	*/
 	return nil
 }
