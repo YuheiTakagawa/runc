@@ -117,6 +117,7 @@ func startContainer(context *cli.Context, spec *specs.Spec, action CtAct, criuOp
 		pidFile:         context.String("pid-file"),
 		preserveFDs:     context.Int("preserve-fds"),
 		action:          action,
+		criuOpts:	 criuOpts,
 	}
 	return r.run(spec.Process)
 }
@@ -161,7 +162,7 @@ type runner struct {
 	consoleSocket   string
 	container       libcontainer.Container
 	action          CtAct
-	//criuOpts	*libcontainer.CriuOpts
+	criuOpts	*libcontainer.CriuOpts
 }
 
 func (r *runner) checkTerminal(config *specs.Process) error {
@@ -194,7 +195,7 @@ func (r *runner) run(config *specs.Process) (int, error) {
 	case CT_ACT_CREATE:
 		err = r.container.Start(process)
 	case CT_ACT_RESTORE:
-	//	err = r.container.Restore(process, r.criuOpts)
+		err = r.container.Restore(process, r.criuOpts)
 	case CT_ACT_RUN:
 		err = r.container.Run(process)
 	default:

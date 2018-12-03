@@ -1027,7 +1027,6 @@ func (c *freebsdContainer) restoreNetwork(req *criurpc.CriuReq, criuOpts *CriuOp
 func (c *freebsdContainer) Restore(process *Process, criuOpts *CriuOpts) error {
 	c.m.Lock()
 	defer c.m.Unlock()
-
 	// TODO(avagin): Figure out how to make this work nicely. CRIU doesn't have
 	//               support for unprivileged restore at the moment.
 	if c.config.Rootless {
@@ -1038,7 +1037,8 @@ func (c *freebsdContainer) Restore(process *Process, criuOpts *CriuOpts) error {
 		return err
 	}
 	if criuOpts.WorkDirectory == "" {
-		criuOpts.WorkDirectory = filepath.Join(c.root, "criu.work")
+	//	criuOpts.WorkDirectory = filepath.Join(c.root, "criu.work")
+		criuOpts.WorkDirectory = filepath.Join("/", "criu.work")
 	}
 	// Since a container can be C/R'ed multiple times,
 	// the work directory may already exist.
