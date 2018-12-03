@@ -34,7 +34,10 @@ type containerState interface {
 }
 
 func destroy(c *freebsdContainer) error {
-	err := c.cgroupManager.Destroy()
+	var err error
+	if c.cgroupManager != nil {
+		err = c.cgroupManager.Destroy()
+	}
 	if rerr := os.RemoveAll(c.root); err == nil {
 		err = rerr
 	}

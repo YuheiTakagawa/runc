@@ -854,7 +854,8 @@ func (c *freebsdContainer) Checkpoint(criuOpts *CriuOpts) error {
 	}
 
 	if criuOpts.WorkDirectory == "" {
-		criuOpts.WorkDirectory = filepath.Join(c.root, "criu.work")
+	//	criuOpts.WorkDirectory = filepath.Join(c.root, "criu.work")
+		criuOpts.WorkDirectory = filepath.Join("/", "criu.work")
 	}
 
 	if err := os.Mkdir(criuOpts.WorkDirectory, 0755); err != nil && !os.IsExist(err) {
@@ -1221,6 +1222,7 @@ func (c *freebsdContainer) criuSwrk(process *Process, req *criurpc.CriuReq, opts
 		cmd.Stdout = process.Stdout
 		cmd.Stderr = process.Stderr
 	}
+	cmd.Stdout = os.Stdout
 	cmd.ExtraFiles = append(cmd.ExtraFiles, criuServer)
 
 	if err := cmd.Start(); err != nil {
@@ -1272,11 +1274,12 @@ func (c *freebsdContainer) criuSwrk(process *Process, req *criurpc.CriuReq, opts
 	if err != nil {
 		return err
 	}
+	fmt.Println(len(data))
 	_, err = criuClientCon.Write(data)
 	if err != nil {
+		fmt.Printf("A")
 		return err
 	}
-
 	buf := make([]byte, 10*4096)
 	oob := make([]byte, 4096)
 	for true {

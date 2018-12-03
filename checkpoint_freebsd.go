@@ -65,7 +65,8 @@ checkpointed.`,
 			return err
 		}
 		if err := container.Checkpoint(options); err != nil {
-			return err
+			fmt.Println(err)
+		//	return err
 		}
 		return nil
 	},

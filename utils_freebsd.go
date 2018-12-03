@@ -161,6 +161,7 @@ type runner struct {
 	consoleSocket   string
 	container       libcontainer.Container
 	action          CtAct
+	//criuOpts	*libcontainer.CriuOpts
 }
 
 func (r *runner) checkTerminal(config *specs.Process) error {
@@ -193,6 +194,7 @@ func (r *runner) run(config *specs.Process) (int, error) {
 	case CT_ACT_CREATE:
 		err = r.container.Start(process)
 	case CT_ACT_RESTORE:
+	//	err = r.container.Restore(process, r.criuOpts)
 	case CT_ACT_RUN:
 		err = r.container.Run(process)
 	default:
