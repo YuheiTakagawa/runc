@@ -2,7 +2,7 @@ package libcontainer
 
 import (
 	"bytes"
-	"encoding/json"
+	//"encoding/json"
 	"context"
 	"fmt"
 	"io/ioutil"
@@ -1144,6 +1144,7 @@ func (c *freebsdContainer) Restore(process *Process, criuOpts *CriuOpts) error {
 		req.Opts.ManageCgroupsMode = &mode
 	}
 
+	/*
 	var (
 		fds    []string
 		fdJSON []byte
@@ -1163,6 +1164,7 @@ func (c *freebsdContainer) Restore(process *Process, criuOpts *CriuOpts) error {
 			req.Opts.InheritFd = append(req.Opts.InheritFd, inheritFd)
 		}
 	}
+	*/
 	return c.criuSwrk(process, req, criuOpts, true)
 }
 
@@ -1238,12 +1240,14 @@ func (c *freebsdContainer) criuSwrk(process *Process, req *criurpc.CriuReq, opts
 		}
 	}()
 
+	/*
 	if applyCgroups {
 		err := c.criuApplyCgroups(cmd.Process.Pid, req)
 		if err != nil {
 			return err
 		}
 	}
+	*/
 
 	var extFds []string
 	if process != nil {
@@ -1277,7 +1281,6 @@ func (c *freebsdContainer) criuSwrk(process *Process, req *criurpc.CriuReq, opts
 	fmt.Println(len(data))
 	_, err = criuClientCon.Write(data)
 	if err != nil {
-		fmt.Printf("A")
 		return err
 	}
 	buf := make([]byte, 10*4096)
