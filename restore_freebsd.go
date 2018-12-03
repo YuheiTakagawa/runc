@@ -5,6 +5,7 @@ package main
 import (
 	"fmt"
 	"os"
+	"strconv"
 
 	"github.com/opencontainers/runc/libcontainer"
 	"github.com/urfave/cli"
@@ -82,6 +83,11 @@ using the runc checkpoint command.`,
 			Name:  "empty-ns",
 			Usage: "create a namespace, but don't restore its properties",
 		},
+		cli.StringFlag{
+			Name:  "restore-pid",
+			Value: "",
+			Usage: "CR_for_FreeBSD of option, /dump/<pid>_*.img",
+		},
 	},
 	Action: func(context *cli.Context) error {
 		if err := checkArgs(context, 1, exactArgs); err != nil {
@@ -113,6 +119,7 @@ func criuOptions(context *cli.Context) *libcontainer.CriuOpts {
 	if err := os.MkdirAll(imagePath, 0655); err != nil {
 		fatal(err)
 	}
+	pid, _ := strconv.Atoi(context.String("restore-pid"))
 	return &libcontainer.CriuOpts{
 		ImagesDirectory:         imagePath,
 		WorkDirectory:           context.String("work-path"),
@@ -123,5 +130,6 @@ func criuOptions(context *cli.Context) *libcontainer.CriuOpts {
 		ShellJob:                context.Bool("shell-job"),
 		FileLocks:               context.Bool("file-locks"),
 		PreDump:                 context.Bool("pre-dump"),
+		Pid:			 uint32(pid),
 	}
 }

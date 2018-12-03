@@ -1092,6 +1092,7 @@ func (c *freebsdContainer) Restore(process *Process, criuOpts *CriuOpts) error {
 			Root:            proto.String(root),
 			ManageCgroups:   proto.Bool(true),
 			NotifyScripts:   proto.Bool(true),
+			Pid:		 proto.Int32(int32(criuOpts.Pid)),
 			ShellJob:        proto.Bool(criuOpts.ShellJob),
 			ExtUnixSk:       proto.Bool(criuOpts.ExternalUnixConnections),
 			TcpEstablished:  proto.Bool(criuOpts.TcpEstablished),
