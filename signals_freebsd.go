@@ -77,6 +77,7 @@ func (h *signalHandler) forward(process *libcontainer.Process) (int, error) {
 			logrus.Debugf("sending signal to process %s", s)
 			if err := syscall.Kill(pid1, s.(syscall.Signal)); err != nil {
 				logrus.Error(err)
+				return -1, nil
 			}
 		}
 	}

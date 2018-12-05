@@ -18,7 +18,7 @@ import (
 	"syscall"
 	"time"
 
-	"golang.org/x/sys/unix"
+//	"golang.org/x/sys/unix"
 
 	"github.com/Sirupsen/logrus"
 	"github.com/golang/protobuf/proto"
@@ -426,6 +426,7 @@ func (c *freebsdContainer) runWrapper(name string, args ...string) (string, erro
 func (c *freebsdContainer) Destroy() error {
 	c.m.Lock()
 	defer c.m.Unlock()
+
 	existJid := c.getJailId(c.id)
 	if c.jailId != "" && existJid == c.jailId {
 		if _, err := c.runWrapper("/usr/sbin/jail", "-r", c.jailId); err != nil {
@@ -712,7 +713,7 @@ func (c *freebsdContainer) checkCriuFeatures(criuOpts *CriuOpts, rpcOpts *criurp
 		Features: criuFeat,
 	}
 
-	err := c.criuSwrk(nil, req, criuOpts, false)
+	err := c.criuSwrkCheckpoint(nil, req, criuOpts, false)
 	if err != nil {
 		logrus.Debugf("%s", err)
 		return fmt.Errorf("CRIU feature check failed")
@@ -830,7 +831,6 @@ func (c *freebsdContainer) addMaskPaths(req *criurpc.CriuReq) error {
 
 func (c *freebsdContainer) Checkpoint(criuOpts *CriuOpts) error {
 	c.m.Lock()
-	defer c.m.Unlock()
 
 	// TODO(avagin): Figure out how to make this work nicely. CRIU 2.0 has
 	//               support for doing unprivileged dumps, but the setup of
@@ -892,13 +892,6 @@ func (c *freebsdContainer) Checkpoint(criuOpts *CriuOpts) error {
 		OrphanPtsMaster: proto.Bool(true),
 	}
 
-/*
-	fcg := c.cgroupManager.GetPaths()["freezer"]
-	if fcg != "" {
-		rpcOpts.FreezeCgroup = proto.String(fcg)
-	}
-*/
-
 	// append optional criu opts, e.g., page-server and port
 	if criuOpts.PageServer.Address != "" && criuOpts.PageServer.Port != 0 {
 		rpcOpts.Ps = &criurpc.CriuPageServerInfo{
@@ -941,49 +934,9 @@ func (c *freebsdContainer) Checkpoint(criuOpts *CriuOpts) error {
 		Opts: &rpcOpts,
 	}
 
-	/*
-	//no need to dump these information in pre-dump
-	if !criuOpts.PreDump {
-		for _, m := range c.config.Mounts {
-			switch m.Device {
-			case "bind":
-				c.addCriuDumpMount(req, m)
-				break
-			case "cgroup":
-				binds, err := getCgroupMounts(m)
-				if err != nil {
-					return err
-				}
-				for _, b := range binds {
-					c.addCriuDumpMount(req, b)
-				}
-				break
-			}
-		}
+	c.m.Unlock()
 
-		if err := c.addMaskPaths(req); err != nil {
-			return err
-		}
-
-		for _, node := range c.config.Devices {
-			m := &configs.Mount{Destination: node.Path, Source: node.Path}
-			c.addCriuDumpMount(req, m)
-		}
-
-		// Write the FD info to a file in the image directory
-		fdsJSON, err := json.Marshal(c.initProcess.externalDescriptors())
-		if err != nil {
-			return err
-		}
-
-		err = ioutil.WriteFile(filepath.Join(criuOpts.ImagesDirectory, descriptorsFilename), fdsJSON, 0655)
-		if err != nil {
-			return err
-		}
-	}
-	*/
-
-	err = c.criuSwrk(nil, req, criuOpts, false)
+	err = c.criuSwrkCheckpoint(nil, req, criuOpts, false)
 	if err != nil {
 		return err
 	}
@@ -1026,7 +979,6 @@ func (c *freebsdContainer) restoreNetwork(req *criurpc.CriuReq, criuOpts *CriuOp
 
 func (c *freebsdContainer) Restore(process *Process, criuOpts *CriuOpts) error {
 	c.m.Lock()
-	defer c.m.Unlock()
 	// TODO(avagin): Figure out how to make this work nicely. CRIU doesn't have
 	//               support for unprivileged restore at the moment.
 	if c.config.Rootless {
@@ -1072,13 +1024,7 @@ func (c *freebsdContainer) Restore(process *Process, criuOpts *CriuOpts) error {
 	if err != nil {
 		return err
 	}
-/*
-	err = unix.Mount(c.config.Rootfs, root, "", unix.MS_BIND|unix.MS_REC, "")
-	if err != nil {
-		return err
-	}
-	defer unix.Unmount(root, unix.MNT_DETACH)
-*/
+
 	t := criurpc.CriuReqType_RESTORE
 	req := &criurpc.CriuReq{
 		Type: &t,
@@ -1101,72 +1047,16 @@ func (c *freebsdContainer) Restore(process *Process, criuOpts *CriuOpts) error {
 			OrphanPtsMaster: proto.Bool(true),
 		},
 	}
+	c.m.Unlock()
 
-	for _, m := range c.config.Mounts {
-		switch m.Device {
-		case "bind":
-			c.addCriuRestoreMount(req, m)
-			break
-/*		case "cgroup":
-			binds, err := getCgroupMounts(m)
-			if err != nil {
-				return err
-			}
-			for _, b := range binds {
-				c.addCriuRestoreMount(req, b)
-			}
-			break
-*/
-		}
+	ret := c.criuSwrkRestore(process, req, criuOpts, true)
+	c.markRunning()
+	c.state = &restoredState{
+		imageDir: criuOpts.ImagesDirectory,
+		c:	c,
 	}
+	return ret
 
-	if len(c.config.MaskPaths) > 0 {
-		m := &configs.Mount{Destination: "/dev/null", Source: "/dev/null"}
-		c.addCriuRestoreMount(req, m)
-	}
-
-	for _, node := range c.config.Devices {
-		m := &configs.Mount{Destination: node.Path, Source: node.Path}
-		c.addCriuRestoreMount(req, m)
-	}
-
-/*
-	if criuOpts.EmptyNs&unix.CLONE_NEWNET == 0 {
-		c.restoreNetwork(req, criuOpts)
-	}
-*/
-
-	// append optional manage cgroups mode
-	if criuOpts.ManageCgroupsMode != 0 {
-		if err := c.checkCriuVersion("1.7"); err != nil {
-			return err
-		}
-		mode := criurpc.CriuCgMode(criuOpts.ManageCgroupsMode)
-		req.Opts.ManageCgroupsMode = &mode
-	}
-
-	/*
-	var (
-		fds    []string
-		fdJSON []byte
-	)
-	if fdJSON, err = ioutil.ReadFile(filepath.Join(criuOpts.ImagesDirectory, descriptorsFilename)); err != nil {
-		return err
-	}
-
-	if err := json.Unmarshal(fdJSON, &fds); err != nil {
-		return err
-	}
-	for i := range fds {
-		if s := fds[i]; strings.Contains(s, "pipe:") {
-			inheritFd := new(criurpc.InheritFd)
-			inheritFd.Key = proto.String(s)
-			inheritFd.Fd = proto.Int32(int32(i))
-			req.Opts.InheritFd = append(req.Opts.InheritFd, inheritFd)
-		}
-	}
-	*/
-	return c.criuSwrk(process, req, criuOpts, true)
 }
 
 func (c *freebsdContainer) criuApplyCgroups(pid int, req *criurpc.CriuReq) error {
@@ -1196,42 +1086,41 @@ func (c *freebsdContainer) criuApplyCgroups(pid int, req *criurpc.CriuReq) error
 	return nil
 }
 
-func (c *freebsdContainer) criuSwrk(process *Process, req *criurpc.CriuReq, opts *CriuOpts, applyCgroups bool) error {
-	fds, err := unix.Socketpair(unix.AF_LOCAL, unix.SOCK_SEQPACKET|unix.SOCK_CLOEXEC, 0)
-	if err != nil {
-		return err
-	}
-
+func (c *freebsdContainer) criuSwrkCheckpoint(process *Process, req *criurpc.CriuReq, opts *CriuOpts, applyCgroups bool) error {
 	logPath := filepath.Join(opts.WorkDirectory, req.GetOpts().GetLogFile())
-	criuClient := os.NewFile(uintptr(fds[0]), "criu-transport-client")
-	criuClientFileCon, err := net.FileConn(criuClient)
-	criuClient.Close()
+
+	path := "/criu-fifo"
+	os.Remove(path)
+	listener, err := net.Listen("unixpacket", path)
 	if err != nil {
-		return err
+		fmt.Println(err)
 	}
-
-	criuClientCon := criuClientFileCon.(*net.UnixConn)
-	defer criuClientCon.Close()
-
-	criuServer := os.NewFile(uintptr(fds[1]), "criu-transport-server")
-	defer criuServer.Close()
+	defer listener.Close()
 
 	args := []string{"swrk", "3"}
 	logrus.Debugf("Using CRIU %d at: %s", c.criuVersion, c.criuPath)
 	logrus.Debugf("Using CRIU with following args: %s", args)
-	cmd := exec.Command(c.criuPath, args...)
+
+	cmd := exec.Command("criu", args...)
 	if process != nil {
 		cmd.Stdin = process.Stdin
 		cmd.Stdout = process.Stdout
 		cmd.Stderr = process.Stderr
 	}
 	cmd.Stdout = os.Stdout
-	cmd.ExtraFiles = append(cmd.ExtraFiles, criuServer)
+	//cmd.ExtraFiles = append(cmd.ExtraFiles, criuServer)
 
-	if err := cmd.Start(); err != nil {
+	if err:= cmd.Start(); err != nil {
+		fmt.Println(err)
 		return err
 	}
-	criuServer.Close()
+
+	conn, err := listener.Accept()
+	if err != nil {
+		fmt.Println(err)
+		return err
+	}
+	criuClientCon := conn.(*net.UnixConn)
 
 	defer func() {
 		criuClientCon.Close()
@@ -1241,7 +1130,7 @@ func (c *freebsdContainer) criuSwrk(process *Process, req *criurpc.CriuReq, opts
 		}
 	}()
 
-	/*
+/*
 	if applyCgroups {
 		err := c.criuApplyCgroups(cmd.Process.Pid, req)
 		if err != nil {
@@ -1250,14 +1139,16 @@ func (c *freebsdContainer) criuSwrk(process *Process, req *criurpc.CriuReq, opts
 	}
 	*/
 
+
 	var extFds []string
+	/*
 	if process != nil {
 		extFds, err = getPipeFds(cmd.Process.Pid)
 		if err != nil {
 			return err
 		}
 	}
-
+*/
 	logrus.Debugf("Using CRIU in %s mode", req.GetType().String())
 	// In the case of criurpc.CriuReqType_FEATURE_CHECK req.GetOpts()
 	// should be empty. For older CRIU versions it still will be
@@ -1377,6 +1268,168 @@ func lockNetwork(config *configs.Config) error {
 	}
 	return nil
 }
+
+func (c *freebsdContainer) criuSwrkRestore(process *Process, req *criurpc.CriuReq, opts *CriuOpts, applyCgroups bool) error {
+	logPath := filepath.Join(opts.WorkDirectory, req.GetOpts().GetLogFile())
+
+	path := "/mycontainer/rootfs/criu-fifo"
+	os.Remove(path)
+	listener, err := net.Listen("unixpacket", path)
+	if err != nil {
+		fmt.Println(err)
+	}
+	defer listener.Close()
+
+	args := []string{"/criu", "swrk", "3"}
+	logrus.Debugf("Using CRIU %d at: %s", c.criuVersion, c.criuPath)
+	logrus.Debugf("Using CRIU with following args: %s", args)
+	c.m.Lock()
+	c.currentStatus()
+	process.Args = args
+	cmd, err := c.jailCmdTmpl(process)
+	if err != nil {
+		return err
+	}
+	if process != nil {
+		cmd.Stdin = process.Stdin
+		cmd.Stdout = process.Stdout
+		cmd.Stderr = process.Stderr
+	}
+	cmd.Stdin = os.Stdin
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+
+	initProcess := c.newInitProcess(process, cmd)
+	initProcess.start()
+
+	err = c.launchJail(cmd)
+	if err != nil {
+		fmt.Println(err)
+	}
+	c.m.Unlock()
+
+	conn, err := listener.Accept()
+	if err != nil {
+		fmt.Println(err)
+		return err
+	}
+	criuClientCon := conn.(*net.UnixConn)
+
+	defer func() {
+		criuClientCon.Close()
+		_, err := cmd.Process.Wait()
+		if err != nil {
+			return
+		}
+	}()
+
+	var extFds []string
+
+	logrus.Debugf("Using CRIU in %s mode", req.GetType().String())
+	// In the case of criurpc.CriuReqType_FEATURE_CHECK req.GetOpts()
+	// should be empty. For older CRIU versions it still will be
+	// available but empty.
+	if req.GetType() != criurpc.CriuReqType_FEATURE_CHECK {
+		val := reflect.ValueOf(req.GetOpts())
+		v := reflect.Indirect(val)
+		for i := 0; i < v.NumField(); i++ {
+			st := v.Type()
+			name := st.Field(i).Name
+			if strings.HasPrefix(name, "XXX_") {
+				continue
+			}
+			value := val.MethodByName("Get" + name).Call([]reflect.Value{})
+			logrus.Debugf("CRIU option %s with value %v", name, value[0])
+		}
+	}
+	data, err := proto.Marshal(req)
+	if err != nil {
+		return err
+	}
+	fmt.Println(len(data))
+	_, err = criuClientCon.Write(data)
+	if err != nil {
+		return err
+	}
+	buf := make([]byte, 10*4096)
+	oob := make([]byte, 4096)
+	for true {
+		n, oobn, _, _, err := criuClientCon.ReadMsgUnix(buf, oob)
+		if err != nil {
+			return err
+		}
+		if n == 0 {
+			return fmt.Errorf("unexpected EOF")
+		}
+		if n == len(buf) {
+			return fmt.Errorf("buffer is too small")
+		}
+
+		resp := new(criurpc.CriuResp)
+		err = proto.Unmarshal(buf[:n], resp)
+		if err != nil {
+			return err
+		}
+		if !resp.GetSuccess() {
+			typeString := req.GetType().String()
+			return fmt.Errorf("criu failed: type %s errno %d\nlog file: %s", typeString, resp.GetCrErrno(), logPath)
+		}
+
+		t := resp.GetType()
+		switch {
+		case t == criurpc.CriuReqType_FEATURE_CHECK:
+			logrus.Debugf("Feature check says: %s", resp)
+			criuFeatures = resp.GetFeatures()
+			break
+		case t == criurpc.CriuReqType_NOTIFY:
+			if err := c.criuNotifications(resp, process, opts, extFds, oob[:oobn]); err != nil {
+				return err
+			}
+			t = criurpc.CriuReqType_NOTIFY
+			req = &criurpc.CriuReq{
+				Type:          &t,
+				NotifySuccess: proto.Bool(true),
+			}
+			data, err = proto.Marshal(req)
+			if err != nil {
+				return err
+			}
+			_, err = criuClientCon.Write(data)
+			if err != nil {
+				return err
+			}
+			continue
+		case t == criurpc.CriuReqType_RESTORE:
+		case t == criurpc.CriuReqType_DUMP:
+		case t == criurpc.CriuReqType_PRE_DUMP:
+		default:
+			return fmt.Errorf("unable to parse the response %s", resp.String())
+		}
+
+		break
+	}
+
+	criuClientCon.CloseWrite()
+	// cmd.Wait() waits cmd.goroutines which are used for proxying file descriptors.
+	// Here we want to wait only the CRIU process.
+	st, err := cmd.Process.Wait()
+	if err != nil {
+		return err
+	}
+
+	// In pre-dump mode CRIU is in a loop and waits for
+	// the final DUMP command.
+	// The current runc pre-dump approach, however, is
+	// start criu in PRE_DUMP once for a single pre-dump
+	// and not the whole series of pre-dump, pre-dump, ...m, dump
+	// If we got the message CriuReqType_PRE_DUMP it means
+	// CRIU was successful and we need to forcefully stop CRIU
+	if !st.Success() && *req.Type != criurpc.CriuReqType_PRE_DUMP {
+		return fmt.Errorf("criu failed: %s\nlog file: %s", st.String(), logPath)
+	}
+	return nil
+}
+
 
 func unlockNetwork(config *configs.Config) error {
 	for _, config := range config.Networks {
