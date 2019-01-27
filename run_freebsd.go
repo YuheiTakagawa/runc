@@ -2,6 +2,8 @@ package main
 
 import (
 	"os"
+	"time"
+	"fmt"
 
 	"github.com/urfave/cli"
 )
@@ -31,6 +33,10 @@ command(s) that get executed on start, edit the args parameter of the spec. See
 		},
 	},
 	Action: func(context *cli.Context) error {
+		file, _ := os.OpenFile("/restore.time", os.O_WRONLY|os.O_APPEND, 0666)
+		fmt.Fprintln(file, "ru")
+		fmt.Fprintln(file, time.Now().UnixNano())
+		file.Close()
 		if err := checkArgs(context, 1, exactArgs); err != nil {
 			return err
 		}
