@@ -1050,11 +1050,14 @@ func (c *freebsdContainer) Restore(process *Process, criuOpts *CriuOpts) error {
 	c.m.Unlock()
 
 	ret := c.criuSwrkRestore(process, req, criuOpts, true)
-	c.markRunning()
+	if err := c.markRunning(); err != nil {
+		fmt.Println(err)
+	}
 	c.state = &restoredState{
 		imageDir: criuOpts.ImagesDirectory,
 		c:	c,
 	}
+	c.deleteExecFifo()
 	return ret
 
 }
